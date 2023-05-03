@@ -1,0 +1,263 @@
+---
+title: "Project 1: Violence in Haiti, 2018-2022"
+author: "Andrew S. Roberts"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE, eval=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Introduction**
+
+*Goals of the project:*
+
+I designed this independent project with 2 goals in mind.
+
+```         
+1. I wanted to practice data analyses and visualization using R.
+2. I wanted to explore the data collected and curated by the Armed Conflict Location & Event Data Project (ACLED, https://acleddata.com/) because I am interested in the applications of data in international development, humanitarian interventions and crisis forecasting.
+```
+
+I decided to explore ACLED's conflict data set for Haiti, as Haiti has a complicated history and has been fraught with political instability. One of the poorest countries in the Western Hemisphere, media reports suggested that violence and social instability has been increasing in the wake of the assassination of President Jovenel Moïse on July 7, 2021. I wanted to explore the spatial and temporal patterns of this violence.
+
+Goal of this analysis:
+
+As the first exercise in a multi-part project, I decided to begin by exploring which parts of Haiti were the most violent, and how has this violence been changing over time. While the data set does include geospatial information, I am using graphs and tables for this initial exploration of the data set (mapping and an and explicitly geospatial analysis will be in a subsequent project).
+
+Driving Questions:
+
+```         
+    1. Between 2018 and 2022, where in Haiti has seen the most violence against civilians? 
+
+    2. In the most violent area, what kinds of threats have they been facing? 
+
+    3. In the most violent area, How many people have been killed?
+```
+
+*Data preparation:*
+
+ACLED generously granted me permission to access their data for the purpose of this independent project, despite my current lack of academic or professional affiliation. I downloaded the data set on April 6, 2023. The data are updated weekly. This set contained data on incidents of violence from January 2018 to March 31, 2023.
+
+The data set consisted of 3958 recorded violent incidents, each with data recorded in 13 fields (following ACLED's data preparation standards). Each record is systematically collected by ACLED staff and partners in-country, and coded following a well-defined protocol. Each record includes information about the kind of incident (using ACLED's 3 layer hierarchy of categories: disorder type, event type and sub-event type). Records also include location information (department \> arrondissment \> commune \> specific location, latitude and longitude) and detailed notes about what occurred and which political groups (if any) were involved. The database is very rich, recording incidents ranging from battles between the national army and local gangs, to strategic developments like alliances and temporary cease-fires.
+
+Initially, I prepared a log to track changes I made to the set. I then organized the data in order to focus on only the fields necessary for this particular analysis (eliminating unnecessary fields, renaming fields for clarity). I then systematically cleaned the data set. This included finding and dealing with blank cells, duplicate records and misfielded data; trimming leading and trailing spaces; standardizing spelling and dates; formatting each field correctly (eg. as dates, strings, numerical). Once the data were ready, I loaded them into R for the analysis.
+
+All analyses and visualizations were prepared in RStudio using packages from the Tidyverse, as well as gmodels.
+
+```{r, include=FALSE}
+setwd("E:/GIS_DATA/PROJECTS/Haiti_Hunger_Violence/ACLED")
+if(!require(tidyverse)) install.packages("tidyverse",repos = "http://cran.us.r-project.org")
+if(!require(gmodels)) install.packages("gmodels",repos = "http://cran.us.r-project.org")
+if(!require(dplyr)) install.packages("dplyr",repos = "http://cran.us.r-project.org")
+if(!require(tinytex)) install.packages("tinytex",repos = "http://cran.us.r-project.org")
+library(tidyverse)
+library(gmodels)
+library(dplyr)
+library(tinytex)
+
+```
+
+**Analysis**
+
+Loading the csv:
+
+```{r}
+haiti <- read_csv(
+    ("ACLED_2018-01-01-2023-03-31-Caribbean-Haiti_CLEAN.csv"),
+    skip_empty_rows = TRUE, 
+    col_types = cols(
+    event_id_cnty = col_character(),
+    event_id_number = col_integer(),
+    event_date = col_date(),
+    event_date_year = col_date (format = "%Y"),
+    event_date_year_month = col_date(format = "%Y-%m"),
+    disorder_type = col_character(),
+    event_type = col_character(),
+    sub_event_type = col_character(),
+    department = col_character(),
+    arrondissment = col_character(),
+    commune = col_character(),
+    location = col_character(),
+    latitude = col_number(),
+    longitude = col_number(),
+    fatalities = col_integer(),
+    notes = col_character()
+    )
+)
+
+```
+
+*Where is the violence occurring?*
+
+First, I visualized the counts of all recorded conflict events for Haiti between 2018 and 2023, broken down by Department and Disorder_Type.
+
+```{r}
+ggplot(data = haiti)+
+geom_bar(mapping = aes(x = event_date_year, fill = disorder_type), position = "dodge")+
+  scale_color_brewer(palette = "Dark2")+
+  facet_wrap (~ department, nrow = 3)+
+  labs (title = "Fig. 1: Number of Violent Incidents in Haiti",
+  subtitle = "By Disorder Type and by Department",
+  caption = "Data Source: Armed Conflict Location & Event Data Project (https://acleddata.com/, accessed 2023-04-06)",
+  x = "Year",
+  Y = "Number of Incidents")+
+  theme_bw()+
+  theme(plot.caption.position = "plot")
+```
+
+Department Ouest has been the most violent department from 2018-2023.
+
+The number of events in Department Ouest are orders of magnitude higher than in the other departments, so plotting them all on axes with the same scale using facet_wrap makes the graphs from the other departments difficult to read. However, due to the dramatic difference between Ouest and the remaining departments, I have confined my focus to Ouest without digging deeper into the other departments.
+
+Narrowing the analysis for only events which occurred in Department Ouest:
+
+```{r}
+ouest <- filter(haiti, department == "Ouest")
+  
+```
+
+Within Department Ouest, comparing arrondissments reveals that Port-au-Prince Arrondissment is the most violent.
+
+```{r}
+ggplot(data = ouest)+
+geom_bar(mapping = aes(x = event_date_year, fill = disorder_type), position = "dodge")+
+  scale_color_brewer(palette = "Dark2")+
+  facet_wrap(~ arrondissment, nrow = 2)+
+  labs (title = "Fig. 2: Number of Violent Incidents in Department Ouest",
+  subtitle = "By Disorder Type and by Arrondissment",
+  caption = "Data Source: Armed Conflict Location & Event Data Project (https://acleddata.com/, accessed 2023-04-06)",
+  x = "Year",
+  Y = "Number of Incidents")+
+  theme_bw()+
+  theme(plot.caption.position = "plot")
+
+```
+
+*Which kinds of incidents?*
+
+ACLED classifies conflict and conflict-related events using a hierarchical system (Disorder Type\>Event Type\>Sub-Event Type). Of the violence occurring in Department Ouest, "Political Violence" is the most dominant Disorder Type. It also shows a pattern of steady increase over time.
+
+To focus on the dominant forms of violence and clarify the patterns of political violence occurring in Ouest, I filtered the data to only display events in the category "Political Violence" recorded in Department Ouest, again broken down by arrondissment.
+
+```{r}
+ouest_political_violence <- filter(haiti, department == "Ouest", disorder_type == "Political violence")
+ggplot(data = ouest_political_violence)+
+geom_bar(mapping = aes(x = event_date_year, fill = disorder_type), position = "dodge")+
+  scale_color_brewer(palette = "Dark2")+
+  labs (title = "Fig. 3: Number of Incidents of Political Violence in Ouest Department",
+  subtitle = "By Arrondissment",
+  caption = "Data Source: Armed Conflict Location & Event Data Project (https://acleddata.com/, accessed 2023-04-06)",
+  x = "Year",
+  Y = "Number of Incidents")+  
+  facet_wrap(~ arrondissment, nrow=2)+
+    theme_bw()+
+  theme(plot.caption.position = "plot")
+```
+
+Each arrondissment is made up of communes. Without deeper investigation, I am not confident in the geographic precision of the commune-level data for Arrondissment Port-au-Prince. So I confined the remains of the analysis to Arrondissment Port-au-Prince.
+
+The data set includes events as early as January 2018, up until the end of March 2023. In order to compare year to year, I only used data for complete years. To do this, I omitted data from 2023. For finer temporal resolution, this analysis could also be performed looking at change from month to month, in which case I could have included data from the three months of 2023.
+
+Filtering for only political violence in Arrondissment Port-au-Prince which occurred between 2018 and 2022 (omitting the 3 months of data from 2023):
+
+```{r}
+port_au_prince_political_violence <- filter(haiti, arrondissment == "Port-au-Prince", disorder_type == "Political violence", event_date_year != "2023-01-01")
+```
+
+Bar graph of violence in Arrondissment Port-au-Prince occurring between 2018 and 2022, broken down by event type:
+
+```{r}
+ggplot(data = port_au_prince_political_violence)+
+geom_bar(mapping = aes(x = event_date_year, fill = event_type), position = "dodge")+
+  scale_color_brewer(palette = "Dark2")+
+  labs (title = "Fig. 4: Number of Violent Incidents in Arrondissment Port-au-Prince", 
+  subtitle = "By Event Type",
+  caption = "Data Source: Armed Conflict Location & Event Data Project (https://acleddata.com/, accessed 2023-04-06)",
+  x = "Year",
+  Y = "Number of Incidents")+
+  theme_bw()+
+  theme(plot.caption.position = "plot")
+  
+```
+
+Both Battles (violence between two politically-organized groups) and Violence Against Civilians have increased dramatically over the time frame. By focusing on Violence against Civilians, the most common category of violent event, I was able to tease out some specific kinds of threats faced by the residents of Arrondissment Port-au-Prince.
+
+```{r}
+port_au_prince_civilian_violence <- filter(port_au_prince_political_violence, event_type == "Violence against civilians")
+ggplot(data = port_au_prince_civilian_violence)+
+geom_bar(mapping = aes(x = event_date_year, fill = sub_event_type), position = "dodge")+
+scale_color_brewer(palette = "Dark2")+
+  labs (title = "Fig. 5: Number of Incidents of Violence Against Civilians",
+  subtitle = "In Arrondissment Port-au-Prince and by Sub-Event Type",
+  caption = "Data Source: Armed Conflict Location & Event Data Project (https://acleddata.com/, accessed 2023-04-06)",
+  x = "Year",
+  Y = "Number of Incidents")+
+  theme_bw()+
+  theme(plot.caption.position = "plot")
+  
+```
+
+*Number of Incidents*
+
+Total incidents of political violence in Arrondissment Port-au-Prince, in tabular form:
+
+```{r}
+
+table_by_year <- xtabs(~ sub_event_type + event_date_year, data = port_au_prince_civilian_violence, sparse = TRUE)
+dimnames(table_by_year)<-setNames(dimnames(table_by_year),c("Sub-Event Type","Year"))
+table_by_year
+
+```
+
+```{r}
+
+CrossTable (port_au_prince_civilian_violence$sub_event_type, port_au_prince_civilian_violence$event_date_year, max.width = 1, prop.chisq = FALSE, prop.r = FALSE, prop.c = TRUE, prop.t = FALSE)
+
+
+```
+
+*Fatalities*
+
+Number of fatalities per year due to political violence in Arrondissment Port-au-Prince, by sub_event_category:
+
+```{r}
+fatalities <- port_au_prince_civilian_violence %>%
+group_by(event_date_year, sub_event_type)%>%
+summarize(total_fatalities = sum(fatalities))
+fatalities
+  
+```
+
+In graph form:
+
+```{r}
+ggplot(data = fatalities)+
+geom_bar(mapping = aes(x = event_date_year, y = total_fatalities, fill = sub_event_type), stat = "identity", position = "dodge")+
+scale_color_brewer(palette = "Dark2")+
+  labs (title = "Fig. 6: Number of Fatalities Stemming From Violence Against Civilians",
+  subtitle = "In Arrondissment Port-au-Prince, by Sub-Event Type",
+  caption = "Data Source: Armed Conflict Location & Event Data Project (https://acleddata.com/, accessed 2023-04-06)",
+  x = "Year",
+  Y = "Number of Fatalities")+
+   theme_bw()+
+  theme(plot.caption.position = "plot")
+```
+
+**Conclusions and Limitations**
+
+Based on this analysis, Arrondissment Port-au-Prince is the most violent in the country. The majority of fatalities in Arrondissment Port-au-Prince have come from attacks on civilians, which have been steadily increasing since 2018. This is the most populous arrondissment in Haiti, and also includes the capital city, Port-au-Prince.
+
+For this project, I limited the analysis to comparisons from year to year and at a geographic resolution no finer than arrondissment. In the event that I try to map violent incidents to events on the broader political-economic landscape, I will need to re-run the analysis at a finer temporal resolution (likely week to week, in order to allow for a lag between when an incident occurs and when it is recorded in the database). Moreover, arrondissment is a coarser spatial scale than I had initially envisioned for this project. However, without a better understanding of political sub-divisions within Port-au-Prince (suburb vs. neighborhood vs. informal toponyms) as well as a better understanding of how incidents are reported and recorded (for example, media reports of violent events might not consistently report precise, fine-scale geographic locations), I did not feel confident digging deeper. Once I spend more time with the data set exploring the details of each incident, gain a better feel for ACLED's measures of geographic confident, and a better understanding of how Port-au-Prince is laid out, I will feel more confident in a finer scale geographic analysis.
+
+In assessing the data for fatalities, I made two observations about the completeness of the data set. First, the absence of fatalities associated with forced disappearances may have more to do with how incident data are collected and recorded, than with humane treatment of abductees. I suspect that fatalities associated with forced disappearances likely emerge some time after the time of abduction. These fatalities, if recorded by ACLED data collectors, might be coded as resulting from a different cause. Additionally, I believe that the gap in deaths associated with sexual violence in 2019 is due to underreporting, which may be a factor in the other years as well.
+
+**Future Projects**
+
+I am planning follow-up projects with this rich data set. Initially, I am planning a spatial analysis of the patterns of violence, as well as exploring different ways to visualize this. Moreover, in this project, I zoomed in on Arrondissment Port-au-Prince. However, the kinds of violence experienced by civilians living in other parts of the country may be different. This is worth exploring in another project. Lastly, the spatial-temporal patterns of violence and the patterns of the types of violence people experience could be overlain with a timeline of events charting the social and political flux of the country in an effort to find correlation between these events.
+
+Lastly, this is a working document. As I develop solutions to the flaws in the visualizations, text or insights, I will amend it.
