@@ -214,12 +214,6 @@ table_by_year
 
 ```
 
-```{r}
-
-CrossTable (port_au_prince_civilian_violence$sub_event_type, port_au_prince_civilian_violence$event_date_year, max.width = 1, prop.chisq = FALSE, prop.r = FALSE, prop.c = TRUE, prop.t = FALSE)
-
-
-```
 
 *Fatalities*
 
