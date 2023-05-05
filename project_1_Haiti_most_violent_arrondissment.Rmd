@@ -202,19 +202,6 @@ scale_color_brewer(palette = "Dark2")+
   
 ```
 
-*Number of Incidents*
-
-Total incidents of political violence in Arrondissment Port-au-Prince, in tabular form:
-
-```{r}
-
-table_by_year <- xtabs(~ sub_event_type + event_date_year, data = port_au_prince_civilian_violence, sparse = TRUE)
-dimnames(table_by_year)<-setNames(dimnames(table_by_year),c("Sub-Event Type","Year"))
-table_by_year
-
-```
-
-
 *Fatalities*
 
 Number of fatalities per year due to political violence in Arrondissment Port-au-Prince, by sub_event_category:
