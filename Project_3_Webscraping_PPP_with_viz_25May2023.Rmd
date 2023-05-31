@@ -1,0 +1,230 @@
+---
+title: "Project 3: Webscraping Southeast Asian newspapers with rvest"
+author: "Andrew S. Roberts"
+version: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#set working directory for all code chunks
+knitr::opts_knit$set(root.dir = 'E:/GIS_DATA/PROJECTS/Project_3_webscraping')
+
+
+```
+
+
+
+```{r, include = FALSE}
+options(stringsAsFactors = F)
+install.packages("tidyverse",repos = "http://cran.us.r-project.org")
+install.packages("rvest",repos = "http://cran.us.r-project.org")
+install.packages("xml2",repos = "http://cran.us.r-project.org")
+library(tidyverse)
+library(rvest)
+library(xml2)
+
+```
+**Webscraping Southeast Asian newspapers with rvest**
+
+31 May 2023
+
+Goal:
+
+The aim of this exercise was to learn how to use rvest to scrape data from webpages, assemble these data into a table, and then export the data as a CSV for analysis elsewhere.
+
+I chose to work with the Phnom Penh Post and Bangkok Post because they are important English language newspapers for the region. It also was an opportunity for me to begin to explore English language news from the region regarding forced labor at sea. 
+
+I aim to scrape the site search results for the search terms: fishing AND (slavery OR "forced labour") from the Phnom Penh Post and Bangkok Post.
+
+I will analyze the text I collect for this project, or expand the search to include additional search terms, in a follow up project.
+
+**Webscraping the Phnom Penh Post with rvest**
+
+Search terms: fishing AND (slavery OR "forced labour")
+
+```{r}
+#Define paging URLs
+page_numbers <- 0:4
+base_url <- "https://phnompenhpost.com/search/node/fishing%20%28slavery%20OR%20%22forced%20labour%22%29"
+paging_urls <- paste0(base_url, page_numbers)
+#print(paging_urls)
+
+#Scrape all links for pages specified in paging URL
+all_links <- NULL
+for (url in paging_urls) {
+
+  html_document <- read_html(url)
+links <- html_document %>%
+  html_elements (xpath = "/html/body/div[3]/div/div[2]/div/ol/li/h3/a") %>%
+  html_attr(name = "href")
+  
+# append links to vector of all links
+  all_links <- c(all_links, links)
+}
+
+scrape_PPP_article <- function(url) {
+  
+  #load document and scrape text
+  html_document <- read_html(url)
+  text_xpath <- "//div[contains(@id, 'ArticleBody')]"
+  article_text <- html_document %>%
+  html_node(xpath = text_xpath) %>%
+  html_text (trim = TRUE)
+ 
+ #scrape title  
+  title_xpath <- "/html/body/div[3]/div/div[5]/h2"
+  article_title <- html_document %>%
+  html_element(xpath = title_xpath) %>%
+  html_text(trim = T)
+ 
+ #scrape date 
+  article_date_string <- html_document %>%
+  html_elements ("span[itemprop='datePublished']") %>%
+  html_text(trim = TRUE)
+  article_date <- substr(article_date_string, start = 6, nchar(article_date_string))
+  date <- dmy(article_date)
+  article_date_8601 <- ymd (date)
+ 
+ 
+  #append title, url, date and full text into a data frame 
+  article_table <- data.frame (
+    date = article_date_8601,
+    title = article_title,
+    url = url,
+    text = article_text
+  )
+  
+  return(article_table)
+  
+}
+#prints progress of process
+all_articles_table_PPP <- data.frame()
+for (i in 1:length(all_links)) {
+  cat("Downloading", i, "of", length(all_links), "URL:", all_links[i], "\n")
+  article_table <- scrape_PPP_article(all_links[i])
+  # Append current article data.frame to the data.frame of all articles
+  all_articles_table_PPP <- rbind(all_articles_table_PPP, article_table)
+}
+
+#Format date text in date column as a date instead of a string.
+as.Date (all_articles_table_PPP$date, "%Y-%m-%d")
+
+#Define the new variable, the date formatted as only the year.
+year <- format (all_articles_table_PPP$date, format = '%Y')
+#Add the new variable year to the data table
+all_articles_table_PPP$year <- year
+#See if it worked.
+view(all_articles_table_PPP)
+
+#write to csv
+write.csv2(all_articles_table_PPP, file = "E:/GIS_DATA/PROJECTS/Project_3_webscraping/PPP_fishing_slavery_OR_forcedlabour_2023-05-25.csv")
+
+```
+
+```{r}
+ggplot(data = all_articles_table_PPP)+
+geom_bar(mapping = aes(x = year), position = "dodge")+
+  scale_color_brewer(palette = "Dark2")+
+  labs (title = "Fig. 1: Number of Articles in the Phnom Penh Post Over Time",
+  subtitle = "Containing the Terms: fishing AND (slavery OR forced labour)",
+  caption = "Data Source: Phnom Penh Post (https://phnompenhpost.com), accessed 2023-05-25)",
+  x = "Year",
+  Y = "Number of Articles")+
+  theme_bw()+
+  theme(plot.caption.position = "plot")
+
+```
+
+**Webscraping the Bangkok Post with rvest**
+
+Search terms: fishing AND (slavery OR "forced labour")
+
+```{r}
+#Define paging URLs
+page_numbers <- 0:12
+base_url <- 'https://search.bangkokpost.com/search/result?start=0&q=fishing+(slavery+OR+"forced+labour")'
+paging_urls <- paste0(base_url, page_numbers)
+#print(paging_urls)
+
+#Scrape all links for pages specified in paging URL
+all_links <- NULL
+for (url in paging_urls) {
+
+  html_document <- read_html(url)
+links <- html_document %>%
+  html_elements (xpath = "/html/body/div[1]/div/div[2]/ul/li[1]/div/h3/a") %>%
+  html_attr(name = "href")
+  
+# append links to vector of all links
+  all_links <- c(all_links, links)
+}
+
+scrape_BP_article <- function(url) {
+  
+  #load document and scrape text
+  html_document <- read_html(url)
+  #text_xpath <- "/html/body/pre/span[3912]/a"
+  text_xpath <- "//p"
+  article_text <- html_document %>%
+  html_node(xpath = text_xpath) %>%
+  html_text (trim = TRUE)
+ 
+ #scrape title  
+  title_xpath <- "/html/body/pre/span[42]/a[2]"  
+  article_title <- html_document %>%
+  html_element(xpath = title_xpath) %>%
+  html_text(trim = T)
+ 
+ #scrape date
+  date_string_xpath <- "/html/body/pre/span[94]/a[3]"
+  article_date_string <- html_document %>%
+  html_elements (xpath = date_string_xpath) %>%  
+  html_text(trim = TRUE)
+  article_date <- substr(article_date_string, start = 6, nchar(article_date_string))
+  date <- dmy(article_date)
+  article_date_8601 <- ymd (date)
+ 
+ 
+  #append title, url, date and full text into a data frame 
+  article_table_BP <- data.frame (
+    date = article_date_8601,
+    title = article_title,
+    url = url,
+    text = article_text
+  )
+  
+  return(article_table_BP)
+  
+}
+
+#prints progress of process
+
+for (i in 1:length(all_links)) {
+  cat("Downloading", i, "of", length(all_links), "URL:", all_links[i], "\n")
+  article_table_BP <- scrape_BP_article(all_links[i])
+all_articles_table_BP <- data.frame()
+  # Append current article data.frame to the data.frame of all articles
+  all_articles_table_BP <- rbind(all_articles_table_BP, article_table_BP)
+}
+
+#Format date text in date column as a date instead of a string.
+as.Date (all_articles_table_BP$date, "%Y-%m-%d")
+
+#Define the new variable, the date formatted as only the year.
+year <- format (all_articles_table_BP$date, format = '%Y')
+#Add the new variable year to the data table
+all_articles_table_BP$year <- year
+#See if it worked.
+view(all_articles_table_BP)
+
+#write to csv
+write.csv2(all_articles_table_BP, file = "E:/GIS_DATA/PROJECTS/Project_3_webscraping/BP_fishing_slavery_OR_forcedlabour_2023-05-25.csv")
+
+```
+**TODO:** the Bangkok Post code is still returning an error from Line 190 (appending article URL, date, title and text into a data frame). 
+
+Error text: Error in data.frame(date = article_date_8601, title = article_title, url = url,  : 
+  arguments imply differing number of rows: 0, 1
+  
+Additionally, the selectors are not returning the correct text. Troubleshoot these by scraping a single page.
