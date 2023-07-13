@@ -1,0 +1,66 @@
+#Shiny Project 1: Haiti 2018-2022: Conflict Event Explorer
+#With pull down menu of event types, reactive leaflet map, and line graph of fatalities for corresponding sub_event_types
+#Required libraries: shiny, shinythemes, tidyverse, leaflet
+
+ui <- fluidPage(
+  titlePanel('Haiti 2018-2022: Conflict Event Explorer'),
+  #shinythemes::shinytheme("superhero"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        inputId = "event",
+        label = "Select an event type",
+        choices = c("Battles", "Explosions/Remote violence", "Protests", "Riots", "Violence against civilians"),
+        selected = "Battles"
+      )
+	  
+    ),
+    mainPanel(
+      leafletOutput(outputId = "map"),
+      plotOutput(outputId = "lineplot")
+    )
+  )
+)
+
+server <- function(input, output) {
+  data_url <- "https://www.dropbox.com/s/m62qxc07hae0r6m/ACLED_2018-01-01-2023-03-31-Caribbean-Haiti_CLEAN.csv?dl=1"
+  data <- read.csv(data_url)
+  
+  filtered_data <- reactive({
+    data %>%
+      filter(event_type == input$event) %>% 
+      filter(event_date_year != 2023) %>%
+      filter(latitude != "") %>%
+      filter(longitude != "") %>%
+      mutate(
+        longitude = as.numeric(longitude),
+        latitude = as.numeric(latitude)
+      ) %>%
+      group_by(event_date_year, sub_event_type)	  
+  })
+  
+  output$lineplot <- renderPlot({
+    filtered_data <- filtered_data()  # Retrieve the reactive expression
+    fatalities_sum <- filtered_data() %>%
+      group_by(event_date_year, sub_event_type) %>%
+      summarise(total_fatalities = sum(fatalities))
+	
+	ggplot(data = fatalities_sum) +
+      geom_line(mapping = aes(x = event_date_year, y = total_fatalities , color = sub_event_type)) +
+      labs(x = "Year", y = "Number of Fatalities", title = "Fatalities by Sub-Event Type", caption = "Data Source: Armed Conflict Location & Event Data Project (accessed 2023-04-06)")  
+  })
+  
+  output$map <- renderLeaflet({
+    leaflet() %>%
+      addProviderTiles(providers$OpenStreetMap.HOT) %>%
+      addMarkers(
+        data = filtered_data(),
+        lng = filtered_data()$longitude,
+        lat = filtered_data()$latitude,
+        popup = ~paste("Location: ", filtered_data()$location, "Sub-Event-Type: ", filtered_data()$sub_event_type)
+      )
+  })
+}
+
+shinyApp(ui = ui, server = server)
+
