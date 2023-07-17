@@ -2,6 +2,12 @@
 #With pull down menu of event types, reactive leaflet map, and line graph of fatalities for corresponding sub_event_types
 #Required libraries: shiny, shinythemes, tidyverse, leaflet
 
+#TO DO: Fix scaling axes on fatality chart so that the years remain the same regardless of the event type choice.
+#TO DO: Make better labels for each section. Add a text box to the sidebar with an explaination about what the app does.
+#TO DO: Adjust theme to make it prettier.
+#TO DO: Change markers on the map to points.
+
+#Define the theme, physical layout of the page, and the user input
 ui <- fluidPage(
   titlePanel('Haiti 2018-2022: Conflict Event Explorer'),
   #shinythemes::shinytheme("superhero"),
@@ -21,11 +27,13 @@ ui <- fluidPage(
     )
   )
 )
-
+#Define the data source, in this case ACLED.
 server <- function(input, output) {
   data_url <- "https://www.dropbox.com/s/m62qxc07hae0r6m/ACLED_2018-01-01-2023-03-31-Caribbean-Haiti_CLEAN.csv?dl=1"
   data <- read.csv(data_url)
-  
+
+#Filter the data so that only complete years are included in the analysis (2018-2022), and to make sure that latitude and longitude are not NULL and are numerical data.
+#Formatting the latitude and longitude here is just to make sure that read.csv interprets it the way I formatted it during the data preparation phase.   
   filtered_data <- reactive({
     data %>%
       filter(event_type == input$event) %>% 
@@ -38,29 +46,33 @@ server <- function(input, output) {
       ) %>%
       group_by(event_date_year, sub_event_type)	  
   })
-  
+
+#Format the data for the line graph, referring to the above filtered_data which includes a reactive expression.  
   output$lineplot <- renderPlot({
-    filtered_data <- filtered_data()  # Retrieve the reactive expression
+    filtered_data <- filtered_data()  #refers to the data which has responded to the user input
     fatalities_sum <- filtered_data() %>%
       group_by(event_date_year, sub_event_type) %>%
-      summarise(total_fatalities = sum(fatalities))
-	
+      summarise(total_fatalities = sum(fatalities)) #calculates fatality sums and assigns them a name
+
+#Format the graph	referring to the above data.
 	ggplot(data = fatalities_sum) +
       geom_line(mapping = aes(x = event_date_year, y = total_fatalities , color = sub_event_type)) +
       labs(x = "Year", y = "Number of Fatalities", title = "Fatalities by Sub-Event Type", caption = "Data Source: Armed Conflict Location & Event Data Project (accessed 2023-04-06)")  
   })
-  
+
+#Format the map using the above data, directing it specifically to the data which has been filtered according to user input.  
   output$map <- renderLeaflet({
     leaflet() %>%
-      addProviderTiles(providers$OpenStreetMap.HOT) %>%
+      addProviderTiles(providers$OpenStreetMap.HOT) %>% #choose tile source for basemap
       addMarkers(
         data = filtered_data(),
         lng = filtered_data()$longitude,
         lat = filtered_data()$latitude,
-        popup = ~paste("Location: ", filtered_data()$location, "Sub-Event-Type: ", filtered_data()$sub_event_type)
+        popup = ~paste("Location: ", filtered_data()$location, "Sub-Event-Type: ", filtered_data()$sub_event_type, "Date:", filtered_data()$event_date)
       )
   })
 }
 
+#This activates the app
 shinyApp(ui = ui, server = server)
 
