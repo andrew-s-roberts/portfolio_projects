@@ -28,7 +28,7 @@ ui <- fluidPage(
       ),
       h4 ("Select from the pull down menu of event categories, to see where violent events have occurred, and how different sub-event-types compare in terms of fatalities."),
       div(
-        h5 (("Data Source: "),tags$a(href="www.acleddata.org", "Armed Conflict Location & Event Data Project"), ("(accessed 2023-04-06)."))
+        h5 (("Data Source: "),tags$a(href="www.acleddata.com", "Armed Conflict Location & Event Data Project"), ("(accessed 2023-04-06)."))
       )
     ),
     mainPanel(
