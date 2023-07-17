@@ -13,4 +13,4 @@ Table of Contents:
 
 3.  Project_3_Webscraping_PPP_with_viz_25May2023: Scraping article text and metadata from Phnom Penh Post and Bangkok Post search results pages using rvest (keywords: fishing AND (slavery OR "forced labour"). May 2023.
 
-4. Shiny_1_Haiti_Event_Explorer_Map_Fatalities: A Shiny app which allows users to choose explore ACLED conflict data from Haiti (2018-2022) using a pulldown menu of ACLED conflict event categories, to display a reactive map of event localities and a chart of annual fatalities by ACLED sub-event-type. (full interractive version available at https://eb25874982534c8eaf9e8b23d8fbf167.app.posit.cloud/p/1731a8a2/). July 2023.
+4. Shiny_1_Haiti_Event_Explorer_Map_Fatalities: A Shiny app which allows users to choose explore ACLED conflict data from Haiti (2018-2022) using a pulldown menu of ACLED conflict event categories, to display a reactive map of event localities and a chart of annual fatalities by ACLED sub-event-type. (A full interractive version available at [https://are101-andrew-roberts.shinyapps.io/Shiny_1_Haiti_Conflict_Event_Explorer/]). July 2023.
