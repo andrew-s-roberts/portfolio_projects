@@ -26,7 +26,13 @@ ui <- fluidPage(
         choices = c("Battles", "Explosions/Remote violence", "Protests", "Riots", "Violence against civilians"),
         selected = "Battles"
       ),
-      h4 ("Select from the pull down menu of event categories, to see where violent events have occurred, and how different sub-event-types compare in terms of fatalities."),
+      selectInput(
+        inputId = "year",
+        label = "Select year",
+        choices = c("2018", "2019", "2020", "2021", "2022"),
+        selected = "2018"
+      ),
+      h4 ("Select from the pull down menu of event categories and years, to see where violent events have occurred, and how different sub-event-types compare in terms of fatalities."),
       div(
         h5 (("Data Source: "),tags$a(href="http://www.acleddata.com", "Armed Conflict Location & Event Data Project"), ("(accessed 2023-04-06)."))
       )
@@ -52,26 +58,42 @@ server <- function(input, output) {
     data %>%
       filter(event_type == input$event) %>% 
       filter(event_date_year != 2023) %>%
+      filter (event_date_year == input$year) %>%
       filter(latitude != "") %>%
       filter(longitude != "") %>%
       mutate(
         longitude = as.numeric(longitude),
         latitude = as.numeric(latitude)
       ) %>%
-      group_by(event_date_year, sub_event_type)	  
+      group_by(event_date_year, sub_event_type) 
+    
+  })
+  #Format the data for the line graph of fatalities, referring to the above filtered_data which includes a reactive expression for event type.   
+  filtered_data_fatalities <- reactive({
+    data %>%
+      filter(event_type == input$event) %>% 
+      filter(event_date_year != 2023) %>%
+      filter(latitude != "") %>%
+      filter(longitude != "") %>%
+      mutate(
+        longitude = as.numeric(longitude),
+        latitude = as.numeric(latitude)
+      ) %>%
+      group_by(event_date_year, sub_event_type) 
   })
   
-  #Format the data for the line graph, referring to the above filtered_data which includes a reactive expression.  
+  #Plot the line graph of fatalities, referring to the above filtered_data which includes a reactive expression for event type.  
   output$lineplot <- renderPlot({
-    filtered_data <- filtered_data()  #refers to the data which has responded to the user input
-    fatalities_sum <- filtered_data() %>%
+    filtered_data_fatalities <- filtered_data_fatalities()  #refers to the data which has responded to the user input
+    fatalities_sum <- filtered_data_fatalities() %>%
       group_by(event_date_year, sub_event_type) %>%
       summarise(total_fatalities = sum(fatalities)) #calculates fatality sums and assigns them a name
     
-    #Format the graph	referring to the above data.
+    #Format the graph referring to the above data.
     ggplot(data = fatalities_sum) +
       geom_line(mapping = aes(x = event_date_year, y = total_fatalities , color = sub_event_type)) +
-      labs(x = "Year", y = "Number of Fatalities")  
+      labs(x = "Year", y = "Number of Fatalities") +
+      xlim(2018, 2022)
   })
   
   #Format the map using the above data, directing it specifically to the data which has been filtered according to user input.  
