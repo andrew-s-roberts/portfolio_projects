@@ -6,6 +6,7 @@
 #TO DO: Make better labels for each section. Add a text box to the sidebar with an explaination about what the app does.
 #TO DO: Adjust theme to make it prettier.
 #TO DO: Change markers on the map to points.
+#TO DO: Fix event category Explosions/Remote Violence so that total fatalities displays correctly and the map stays on Haiti even on years with no incidents of that category.
 
 #Required libraries: shiny, shinythemes, tidyverse, leaflet
 library(shiny)
@@ -15,6 +16,7 @@ library(tidyverse)
 
 
 #Define the theme, physical layout of the page, and the user input
+#Removed event category Explosions/Remote violence because n=2, and fatalities were not displaying correctly
 ui <- fluidPage(
   titlePanel('Haiti 2018-2022: Conflict Event Explorer'),
   #shinythemes::shinytheme("superhero"), 
@@ -23,7 +25,7 @@ ui <- fluidPage(
       selectInput(
         inputId = "event",
         label = "Select an event type",
-        choices = c("Battles", "Explosions/Remote violence", "Protests", "Riots", "Violence against civilians"),
+        choices = c("Battles", "Protests", "Riots", "Violence against civilians"),
         selected = "Battles"
       ),
       selectInput(
