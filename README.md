@@ -14,3 +14,5 @@ Table of Contents:
 3.  Project_3_Webscraping_PPP_with_viz_25May2023: Scraping article text and metadata from Phnom Penh Post and Bangkok Post search results pages using rvest (keywords: fishing AND (slavery OR "forced labour"). May 2023.
 
 4. Shiny_1_Haiti_Event_Explorer_Map_Fatalities: A Shiny app which allows users to choose explore ACLED conflict data from Haiti (2018-2022) using a pulldown menu of ACLED conflict event categories, to display a reactive map of event localities and a chart of annual fatalities by ACLED sub-event-type. (A full interractive version available at [https://are101-andrew-roberts.shinyapps.io/Shiny_1_Haiti_Conflict_Event_Explorer/]). July 2023.
+
+5. Scheduling_App_stream.py: A Python program for making bulk scheduling decisions based on rules. Users input states of given criteria via Streamlit, the logic of the program makes scheduling decisions. This is then displayed as a pandas dataframe and downloaded as a csv (for ultimate input into Google Calendar. It was designed to streamline my scheduling process for juggling household and professional workloads. November 2023. WORK IN PROGRESS. 
