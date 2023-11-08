@@ -3,21 +3,19 @@ import streamlit as st
 from datetime import datetime, timedelta
 import pandas as pd
 import calendar  # for calendar sidebar
-from itertools import product  # for generating combinations
+
 
 # Global Constants should be at top of file, below imports
-# Default workday hours is included as a fallback in case no conditions are met.
 # Also including the criteria and their states, defined by user input.
-DEFAULT_WORKDAY_HOURS = 8
 DEFAULT_WORKDAY_START = "09:00 AM"
 CUSTOM_WORKDAY_START = "12:00 PM"
 CRITERIA_STATES = {
-    "Michelle": ["Off", "Sleeping/Working"],
-    "AM Appointment": ["Yes Appointment", "No Appointment"],
-    "Kids After School": ["Yes Tasks", "No Tasks"],
-    "Cooking": ["Yes Cooking", "No Cooking"],
-    "PM BJJ": ["Yes BJJ", "No BJJ"],
-    "Weekend": ["Yes", "No"]
+    "spouse": ["Off", "Sleeping/Working"],
+    "am_appointment": ["Yes Appointment", "No Appointment"],
+    "kids_after_school": ["Yes Tasks", "No Tasks"],
+    "cooking": ["Yes Cooking", "No Cooking"],
+    "pm_bjj": ["Yes BJJ", "No BJJ"],
+    "weekend": ["Yes", "No"]
 }
 
 # Initialize session states to save input each time the user records information for a date
@@ -33,15 +31,10 @@ def display_calendar(year, month):
     return cal.formatmonth(year, month)
 
 
-# Generate unique combinations of states
-def generate_combinations(criteria_states):
-    return list(product(*criteria_states.values()))
-
-
 # Calculate end time and workday duration without using a default workday length
 # In the following block, datetime.strptime() converts time strings to datetime objects compatible with timedelta
 def calculate_time_and_duration(combination):
-    michelle, am_appointment, kids_after_school, pm_bjj, cooking, weekend = combination
+    spouse, am_appointment, kids_after_school, pm_bjj, cooking, weekend = combination
     workday_start = datetime.strptime(DEFAULT_WORKDAY_START, "%I:%M %p")
     end_time = None
 
@@ -50,7 +43,7 @@ def calculate_time_and_duration(combination):
         workday_start = datetime.strptime(CUSTOM_WORKDAY_START, "%I:%M %p")
 
     # Rules for calculating end time
-    if pm_bjj == "Yes BJJ" and michelle == "Off" and cooking == "No Cooking":
+    if pm_bjj == "Yes BJJ" and spouse == "Off" and cooking == "No Cooking":
         end_time = datetime.strptime("05:20 PM", "%I:%M %p")  # Set specific end time
     elif kids_after_school == "Yes Tasks":
         end_time = datetime.strptime("02:00 PM" if cooking == "Yes Cooking" else "03:00 PM", "%I:%M %p")
@@ -71,16 +64,18 @@ def calculate_time_and_duration(combination):
 
 # Determine "Best for BJJ" value
 def determine_best_for_bjj(combination):
-    michelle, am_appointment, kids_after_school, pm_bjj, cooking, weekend = combination
+    spouse, am_appointment, kids_after_school, pm_bjj, cooking, weekend = combination
     if weekend == "Yes":
         return "Weekend"
-    elif michelle == "Off" and cooking == "No Cooking" and kids_after_school == "No Tasks":
+    elif spouse == "Off" and cooking == "No Cooking" and kids_after_school == "No Tasks":
         return "Best"
-    elif michelle != "Off" and cooking == "Yes Cooking" and kids_after_school == "Yes Tasks":
+    elif spouse != "Off" and cooking == "Yes Cooking" and kids_after_school == "Yes Tasks":
         return "Worst"
-    elif michelle != "Off" and cooking == "Yes Cooking" and kids_after_school == "No Tasks":
+    elif spouse != "Off" and cooking == "Yes Cooking" and kids_after_school == "No Tasks":
         return "Possible"
-    elif michelle != "Off" and cooking == "No Cooking" and kids_after_school == "Yes Tasks":
+    elif spouse != "Off" and cooking == "No Cooking" and kids_after_school == "Yes Tasks":
+        return "Good"
+    elif spouse != "Off" and cooking == "No Cooking" and kids_after_school == "No Tasks":
         return "Good"
     else:
         return "Possible"
@@ -88,10 +83,10 @@ def determine_best_for_bjj(combination):
 
 # Function to recalculate the end time for a given row in DataFrame
 def recalculate_end_time(row):
-    combination = (row['Michelle'], row['AM Appointment'], row['Kids After School'], row['PM BJJ'], row['Cooking'], row['Weekend'])
+    combination = (row['spouse'], row['am_appointment'], row['kids_after_school'], row['cooking'], row['pm_bjj'], row['weekend'])
     _, end_time, duration = calculate_time_and_duration(combination)
-    row['Quittin Time'] = end_time
-    row['Work Day Duration'] = duration
+    row['end_time'] = end_time
+    row['duration'] = duration
     return row
 
 
@@ -111,7 +106,7 @@ def main():
     )
 
     # Inputs for the criteria states using radio buttons
-    michelle_state = st.radio("Spouse status?", ["Off", "Sleeping/Working"])
+    spouse = st.radio("Spouse status?", ["Off", "Sleeping/Working"])
     am_appointment = st.radio("AM Appointment?", ["Yes Appointment", "No Appointment"])
     kids_after_school_state = st.radio("Transporting Kids After School?", ["Yes Tasks", "No Tasks"])
     cooking_state = st.radio("Cooking supper?", ["Yes Cooking", "No Cooking"])
@@ -121,33 +116,32 @@ def main():
     # Button to record the criteria states for the current day
     if st.button("Record Data for This Day"):
         st.session_state.daily_criteria_states.append(
-            (st.session_state.current_date, michelle_state, am_appointment, kids_after_school_state, pm_bjj_state, cooking_state, weekend_state))
+            (st.session_state.current_date, spouse, am_appointment, kids_after_school_state, pm_bjj_state, cooking_state, weekend_state))
         st.session_state.current_date += timedelta(days=1)
 
     # Button to start calculating the work schedule
     if st.button("Start Calculating"):
-        with st.spinner():
+        with st.spinner("Calculating schedule..."):
             # Initialize an empty list to store the results
             results = []
             # Use st.session_state.daily_criteria_states here
-            for day, michelle, am_appointment, kids_after_school, pm_bjj, cooking, weekend in st.session_state.daily_criteria_states:
+            for day, spouse, am_appointment, kids_after_school, cooking, pm_bjj, weekend in st.session_state.daily_criteria_states:
                 # Apply rules and calculate times and BJJ suitability 
-                #rule_applied_combination = apply_rules((michelle, am_appointment, kids_after_school, pm_bjj, cooking, weekend))
-				# apply_rules is not defined elsewhere in the code so I think this is a vertige of the earlier versions of the program and should be removed.
+                combination = (spouse, am_appointment, kids_after_school, cooking, pm_bjj, weekend)
                 workday_start, end_time, duration = calculate_time_and_duration(combination)
                 best_for_bjj = determine_best_for_bjj(combination)
 
                 # Append the results to the list, including workday_start
-                results.append((day, workday_start, end_time, duration, michelle, am_appointment, kids_after_school, pm_bjj, cooking, weekend, best_for_bjj))
+                results.append((day, workday_start, end_time, duration, spouse, am_appointment, kids_after_school, cooking, pm_bjj, weekend, best_for_bjj))
 
             # Create a DataFrame from the results
-            columns = ["Date", "Punch In", "Quittin Time", "Work Day Duration", "Michelle", "AM Appointment", "Kids After School", "PM BJJ", "Cooking", "Weekend", "Best for BJJ"]
+            columns = ["day", "workday_start", "end_time", "duration", "spouse", "am_appointment", "kids_after_school", "cooking", "pm_bjj", "weekend", "best_for_bjj"]
             df = pd.DataFrame(results, columns=columns)
 
             # Apply rules to the DataFrame to automatically change states after the fact based on criteria interactions
-            df.loc[(df['Michelle'] == 'Sleeping/Working') | ((df['Michelle'] != 'Off') & (df['Weekend'] == 'Yes')), 'Cooking'] = 'Yes Cooking'
-            df.loc[df['Weekend'] == 'Yes', ['PM BJJ', 'Kids After School']] = 'No BJJ', 'No Tasks'
-            df.loc[df['Best for BJJ'].isin(['Best', 'Good']), 'PM BJJ'] = 'Yes BJJ'
+            df.loc[(df['spouse'] == 'Sleeping/Working') | ((df['spouse'] != 'Off') & (df['weekend'] == 'Yes')), 'cooking'] = 'Yes Cooking'
+            df.loc[df['weekend'] == 'Yes', ['pm_bjj', 'kids_after_school']] = 'No BJJ', 'No Tasks'
+            df.loc[df['best_for_bjj'].isin(['Best', 'Good']), 'pm_bjj'] = 'Yes BJJ'
 
             # Recalculate end time and workday duration based on changes stemming from rules above
             df = df.apply(lambda row: recalculate_end_time(row), axis=1)
@@ -190,4 +184,3 @@ if __name__ == "__main__":
     main()
 
 
-# To run app on my machine, type: streamlit run C:\Users\user1\Desktop\JOB_HUNT\Scheduling\Scheduling_App_stream.py
